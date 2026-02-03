@@ -9,28 +9,36 @@ from .template import Processor
 
 class Clustering(Processor):
 
-    df: pd.DataFrame
-    abundance_cutoff: float
+    count_df: pd.DataFrame
+    rpm_df: pd.DataFrame
+    rpm_cutoff: float
     clustering_identity: float
     mmseqs_df: pd.DataFrame  # motif_id, cdr3_amino_acid_sequence
 
-    def main(self, df: pd.DataFrame, abundance_cutoff: float, clustering_identity: float):
-        self.df = df.copy()
-        self.abundance_cutoff = abundance_cutoff
+    def main(
+            self,
+            count_df: pd.DataFrame,
+            rpm_df: pd.DataFrame,
+            rpm_cutoff: float,
+            clustering_identity: float):
+
+        self.count_df = count_df.copy()
+        self.rpm_df = rpm_df.copy()
+        self.rpm_cutoff = rpm_cutoff
         self.clustering_identity = clustering_identity
 
-        self.filter_by_abundance()
+        self.filter_by_rpm()
         self.write_fasta()
         self.run_mmseqs()
         self.generate_sequence_logo()
 
-    def filter_by_abundance(self):
+    def filter_by_rpm(self):
         n_before = len(self.df)
-        avg_abundance = self.df.mean(axis=1)
-        self.df = self.df[avg_abundance >= self.abundance_cutoff]
-        n_after = len(self.df)
+        avg_rpm = self.rpm_df.mean(axis=1)
+        self.rpm_df = self.rpm_df[avg_rpm >= self.rpm_cutoff]
+        n_after = len(self.rpm_df)
         self.logger.info(f'''\
-Filtering out TCRs with average abundance less than {self.abundance_cutoff}
+Filtering out TCRs with average RPM less than {self.rpm_cutoff}
 Unique TCRs before filtering: {n_before}, after filtering: {n_after}''')
 
     def write_fasta(self):

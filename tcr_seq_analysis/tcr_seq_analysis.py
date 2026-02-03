@@ -1,21 +1,44 @@
 import pandas as pd
-from yltk import Processor
+from .template import Processor
+from .clustering import Clustering
+from .profile_plot import ProfilePlot
+from .compile_table import CompileTable
+from .diversity_clonality import DiversityClonality
 
 
 class TcrSeqAnalysis(Processor):
 
-    df: pd.DataFrame
+    count_df: pd.DataFrame
+    rpm_df: pd.DataFrame
 
-    def main(self):
-        self.df = CompileTable(self.settings).main(
-            csvdir=CSVDIR,
-            sample_sheet=SAMPLE_SHEET,
-            csv_suffix=CSV_SUFFIX,
-            clonal_index_columns=CLONAL_INDEX_COLUMNS,
-            count_column=COUNT_COLUMN)
+    def main(
+            self,
+            csv_dir: str,
+            csv_suffix: str,
+            sample_sheet: str,
+            clonal_index_column: str,
+            count_column: str,
+            group_column: str,
+            rpm_cutoff: float,
+            clustering_identity: float):
 
-        DiversityClonality(self.settings).main(df=self.df, sample_sheet=SAMPLE_SHEET, group_column=GROUP_COLUMN)
+        self.count_df, self.rpm_df = CompileTable(self.settings).main(
+            csv_dir=csv_dir,
+            csv_suffix=csv_suffix,
+            sample_sheet=sample_sheet,
+            clonal_index_column=clonal_index_column,
+            count_column=count_column)
 
-        Tree(self.settings).main(df=self.df, rpm_cutoff=RPM_CUTOFF)
+        ProfilePlot(self.settings).main(
+            count_df=self.count_df)
 
-        Clustering(self.settings).main(df=self.df, rpm_cutoff=RPM_CUTOFF)
+        DiversityClonality(self.settings).main(
+            count_df=self.count_df,
+            sample_sheet=sample_sheet,
+            group_column=group_column)
+
+        Clustering(self.settings).main(
+            count_df=self.count_df,
+            rpm_df=self.rpm_df,
+            abundance_cutoff=rpm_cutoff,
+            clustering_identity=clustering_identity)

@@ -13,7 +13,8 @@ class TestClustering(TestCase):
 
     def test_main(self):
         Clustering(self.settings).main(
-            df=pd.read_csv(f'{self.indir}/rpm-table.csv', index_col=0),
+            count_df=pd.read_csv(f'{self.indir}/count-table.csv', index_col=0),
+            rpm_df=pd.read_csv(f'{self.indir}/rpm-table.csv', index_col=0),
             abundance_cutoff=500,
             clustering_identity=0.80,
         )
