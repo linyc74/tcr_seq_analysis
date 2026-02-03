@@ -8,18 +8,9 @@ from .template import Processor
 class ProfilePlot(Processor):
 
     count_df: pd.DataFrame
-    sample_sheet_df: pd.DataFrame
-    group_column: str
 
-    def main(
-            self,
-            count_df: pd.DataFrame,
-            sample_sheet_df: str,
-            group_column: str):
-
+    def main(self, count_df: pd.DataFrame):
         self.count_df = count_df
-        self.sample_sheet_df = sample_sheet_df
-        self.group_column = group_column
 
         self.rank_count_plots()
         self.lorenz_curves()
@@ -31,13 +22,13 @@ class ProfilePlot(Processor):
         
         global_max_count = self.count_df.max().max()
         global_max_ranks = 0
-        for sample_id in self.sample_sheet_df.index:
+        for sample_id in self.count_df.columns:
             count_values = self.count_df[sample_id]
             n_ranks = len(count_values[count_values != 0])
             if n_ranks > global_max_ranks:
                 global_max_ranks = n_ranks
 
-        for sample_id in self.sample_sheet_df.index:
+        for sample_id in self.count_df.columns:
             count_values = self.count_df[sample_id]
             nonzero_counts = count_values[count_values != 0]
             sorted_counts = nonzero_counts.sort_values(ascending=False)
@@ -61,7 +52,7 @@ class ProfilePlot(Processor):
         dstdir = f'{self.outdir}/lorenz-curve'
         os.makedirs(dstdir, exist_ok=True)
         
-        for sample_id in self.sample_sheet_df.index:
+        for sample_id in self.count_df.columns:
             count_values = self.count_df[sample_id]
             nonzero_counts = count_values[count_values != 0]
             sorted_counts = nonzero_counts.sort_values(ascending=True)  # low to high
@@ -104,7 +95,7 @@ class ProfilePlot(Processor):
         global_tcr_length_min = min([len(sequence) for sequence in self.count_df.index])
         global_tcr_length_max = max([len(sequence) for sequence in self.count_df.index])
         
-        for sample_id in self.sample_sheet_df.index:
+        for sample_id in self.count_df.columns:
             count_values = self.count_df[sample_id]
             nonzero_counts = count_values[count_values != 0]
             tcr_sequences = nonzero_counts.index

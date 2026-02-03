@@ -13,7 +13,5 @@ class TestProfilePlot(TestCase):
     
     def test_main(self):
         ProfilePlot(self.settings).main(
-            count_df=pd.read_csv(f'{self.indir}/count-table.csv', index_col=0),
-            sample_sheet_df=pd.read_csv(f'{self.indir}/sample-sheet.csv', index_col=0),
-            group_column='Group'
+            count_df=pd.read_csv(f'{self.indir}/count-table.csv', index_col=0)
         )
