@@ -1,4 +1,6 @@
 import pandas as pd
+import matplotlib.pyplot as plt
+from matplotlib.colors import to_rgba
 from .template import Processor
 from .clustering import Clustering
 from .profile_plot import ProfilePlot
@@ -8,9 +10,6 @@ from .differential_abundance import DifferentialAbundance
 
 
 class TcrSeqAnalysis(Processor):
-
-    count_df: pd.DataFrame
-    motif_count_df: pd.DataFrame
 
     def main(
             self,
@@ -22,9 +21,11 @@ class TcrSeqAnalysis(Processor):
             group_column: str,
             rpm_cutoff: float,
             clustering_identity: float,
-            p_value: float):
+            p_value: float,
+            colormap: str,
+            invert_colors: bool):
 
-        self.count_df = CompileTable(self.settings).main(
+        count_df = CompileTable(self.settings).main(
             csv_dir=csv_dir,
             csv_suffix=csv_suffix,
             sample_sheet=sample_sheet,
@@ -32,21 +33,70 @@ class TcrSeqAnalysis(Processor):
             count_column=count_column)
 
         ProfilePlot(self.settings).main(
-            count_df=self.count_df)
+            count_df=count_df)
 
-        DiversityClonality(self.settings).main(
-            count_df=self.count_df,
-            sample_sheet=sample_sheet,
-            group_column=group_column)
+        # DiversityClonality(self.settings).main(
+        #     count_df=count_df,
+        #     sample_sheet=sample_sheet,
+        #     group_column=group_column)
 
-        self.count_df, self.motif_count_df = Clustering(self.settings).main(
-            count_df=self.count_df,
+        count_df, motif_count_df = Clustering(self.settings).main(
+            count_df=count_df,
             rpm_cutoff=rpm_cutoff,
             clustering_identity=clustering_identity)
 
+        colors = GetColors(self.settings).main(
+            sample_sheet=sample_sheet,
+            group_column=group_column,
+            colormap=colormap,
+            invert_colors=invert_colors)
+
         DifferentialAbundance(self.settings).main(
-            df=self.motif_count_df,
+            df=motif_count_df,
             sample_sheet=sample_sheet,
             group_column=group_column,
             colors=colors,
             p_value=p_value)
+
+        count_df.to_csv(f'{self.outdir}/count-table.csv', index=True)
+        motif_count_df.to_csv(f'{self.outdir}/motif-count-table.csv', index=True)
+
+        self.call(f'mkdir -p {self.outdir}/log')
+        self.call(f'mv {self.outdir}/*.log {self.outdir}/log/')
+
+
+class GetColors(Processor):
+
+    sample_sheet: str
+    group_column: str
+    colormap: str
+    invert_colors: bool
+
+    def main(
+            self,
+            sample_sheet: str,
+            group_column: str,
+            colormap: str,
+            invert_colors: bool) -> list:
+
+        self.sample_sheet = sample_sheet
+        self.group_column = group_column
+        self.colormap = colormap
+        self.invert_colors = invert_colors
+
+        df = pd.read_csv(self.sample_sheet, index_col=0)
+        n_groups = len(df[self.group_column].unique())
+
+        if ',' in self.colormap:
+            names = self.colormap.split(',')
+            if len(names) != n_groups:
+                self.logger.info(f'WARNING! Number of colors "{self.colormap}" does not match number of groups ({n_groups})')
+            colors = [to_rgba(n) for n in names]
+        else:
+            cmap = plt.colormaps[self.colormap]
+            colors = [cmap(i) for i in range(n_groups)]
+
+        if self.invert_colors:
+            colors = colors[::-1]
+
+        return colors
