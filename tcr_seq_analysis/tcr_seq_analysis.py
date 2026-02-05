@@ -32,24 +32,25 @@ class TcrSeqAnalysis(Processor):
             clonal_index_column=clonal_index_column,
             count_column=count_column)
 
-        ProfilePlot(self.settings).main(
-            count_df=count_df)
-
-        # DiversityClonality(self.settings).main(
-        #     count_df=count_df,
-        #     sample_sheet=sample_sheet,
-        #     group_column=group_column)
-
-        count_df, motif_count_df = Clustering(self.settings).main(
-            count_df=count_df,
-            rpm_cutoff=rpm_cutoff,
-            clustering_identity=clustering_identity)
-
         colors = GetColors(self.settings).main(
             sample_sheet=sample_sheet,
             group_column=group_column,
             colormap=colormap,
             invert_colors=invert_colors)
+
+        ProfilePlot(self.settings).main(
+            count_df=count_df)
+
+        DiversityClonality(self.settings).main(
+            count_df=count_df,
+            sample_sheet=sample_sheet,
+            group_column=group_column,
+            colors=colors)
+
+        count_df, motif_count_df = Clustering(self.settings).main(
+            count_df=count_df,
+            rpm_cutoff=rpm_cutoff,
+            clustering_identity=clustering_identity)
 
         DifferentialAbundance(self.settings).main(
             df=motif_count_df,

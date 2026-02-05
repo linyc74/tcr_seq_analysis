@@ -9,6 +9,7 @@ from scipy.stats import mannwhitneyu
 from typing import List, Dict, Any, Tuple
 from statsmodels.stats.multitest import multipletests
 from .template import Processor
+from .grouping import AddGroupColumn
 
 
 DSTDIR_NAME = 'motif-differential-abundance'
@@ -63,51 +64,6 @@ def normalize_to_log_rpm_pseudocount(df: pd.DataFrame) -> pd.DataFrame:
     df = df + 1
     df = np.log10(df)
     return df
-
-
-class AddGroupColumn(Processor):
-
-    NA_VALUE: str = 'None'  # Don't use 'NA', which would make dtype = `float` but not `str`, tricky for testing
-
-    df: pd.DataFrame
-    sample_sheet: str
-    group_column: str
-
-    sample_df: pd.DataFrame
-
-    def main(
-            self,
-            df: pd.DataFrame,
-            sample_sheet: str,
-            group_column: str) -> pd.DataFrame:
-
-        self.df = df.copy(deep=True)
-        self.sample_sheet = sample_sheet
-        self.group_column = group_column
-
-        self.read_sample_sheet()
-        self.add_group_column()
-        self.reorder_columns()
-
-        return self.df
-
-    def read_sample_sheet(self):
-        self.sample_df = pd.read_csv(self.sample_sheet, index_col=0)
-        assert self.group_column in self.sample_df.columns, \
-            f'No "{self.group_column}" column in {self.sample_sheet}'
-
-    def add_group_column(self):
-        self.df = self.df.merge(
-            right=self.sample_df[self.group_column],
-            how='left',
-            left_index=True,
-            right_index=True)
-        self.df[self.group_column] = self.df[self.group_column].fillna(self.NA_VALUE)
-
-    def reorder_columns(self):
-        cols = list(self.df.columns)
-        cols = [cols[-1]] + cols[:-1]
-        self.df = self.df[cols]
 
 
 class MannwhitneyuTestsAndBoxplots(Processor):

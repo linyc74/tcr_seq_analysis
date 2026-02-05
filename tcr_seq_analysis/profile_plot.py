@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from .template import Processor
+from .diversity_clonality import gini_coefficient
 
 
 class ProfilePlot(Processor):
@@ -110,12 +111,3 @@ class ProfilePlot(Processor):
             plt.tight_layout()
             plt.savefig(f'{dstdir}/{sample_id}.png', dpi=600)
             plt.close()
-
-
-def gini_coefficient(values: np.ndarray) -> float:
-    values = values[values != 0]  # remove zeros
-    values = np.sort(values)  # low to high
-    cumulative_sum = np.cumsum(values)
-    lorenz_curve = cumulative_sum / values.sum()  # normalize by total sum
-    B = np.sum(lorenz_curve) / len(values)  # the "B" area under the Lorenz curve
-    return 1 - 2 * B
