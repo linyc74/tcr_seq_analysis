@@ -13,5 +13,5 @@ class TestProfilePlot(TestCase):
     
     def test_main(self):
         ProfilePlot(self.settings).main(
-            count_df=pd.read_csv(f'{self.indir}/count-table.csv', index_col=0)
+            count_df=pd.read_csv(f'{self.indir}/count_df.csv', index_col=0)
         )

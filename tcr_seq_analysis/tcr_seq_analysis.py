@@ -10,6 +10,8 @@ class TcrSeqAnalysis(Processor):
 
     count_df: pd.DataFrame
     rpm_df: pd.DataFrame
+    motif_count_df: pd.DataFrame
+    motif_rpm_df: pd.DataFrame
 
     def main(
             self,
@@ -37,8 +39,8 @@ class TcrSeqAnalysis(Processor):
             sample_sheet=sample_sheet,
             group_column=group_column)
 
-        Clustering(self.settings).main(
+        self.count_df, self.rpm_df, self.motif_count_df, self.motif_rpm_df = Clustering(self.settings).main(
             count_df=self.count_df,
             rpm_df=self.rpm_df,
-            abundance_cutoff=rpm_cutoff,
+            rpm_cutoff=rpm_cutoff,
             clustering_identity=clustering_identity)

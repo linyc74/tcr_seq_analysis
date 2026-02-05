@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import logomaker as lm
 import matplotlib.pyplot as plt
-from typing import List
+from typing import List, Tuple
 from .template import Processor
 
 
@@ -13,43 +13,50 @@ class Clustering(Processor):
     rpm_df: pd.DataFrame
     rpm_cutoff: float
     clustering_identity: float
-    mmseqs_df: pd.DataFrame  # motif_id, cdr3_amino_acid_sequence
+
+    mmseqs_df: pd.DataFrame
+    motif_count_df: pd.DataFrame
+    motif_rpm_df: pd.DataFrame
 
     def main(
             self,
             count_df: pd.DataFrame,
             rpm_df: pd.DataFrame,
             rpm_cutoff: float,
-            clustering_identity: float):
+            clustering_identity: float) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 
         self.count_df = count_df.copy()
         self.rpm_df = rpm_df.copy()
         self.rpm_cutoff = rpm_cutoff
         self.clustering_identity = clustering_identity
 
-        self.filter_by_rpm()
         self.write_fasta()
         self.run_mmseqs()
+        self.count_df = self.merge_motif_id(df=self.count_df)
+        self.rpm_df = self.merge_motif_id(df=self.rpm_df)
+        self.motif_count_df = self.count_df.groupby('motif_id').sum()
+        self.motif_rpm_df = self.rpm_df.groupby('motif_id').sum()
+
         self.generate_sequence_logo()
 
-    def filter_by_rpm(self):
-        n_before = len(self.df)
-        avg_rpm = self.rpm_df.mean(axis=1)
-        self.rpm_df = self.rpm_df[avg_rpm >= self.rpm_cutoff]
-        n_after = len(self.rpm_df)
-        self.logger.info(f'''\
-Filtering out TCRs with average RPM less than {self.rpm_cutoff}
-Unique TCRs before filtering: {n_before}, after filtering: {n_after}''')
+        return self.count_df, self.rpm_df, self.motif_count_df, self.motif_rpm_df
 
     def write_fasta(self):
-        with FastaWriter(file=f'{self.workdir}/cdr3.faa', mode='w') as fasta:
-            for tcr in self.df.index:
+        avg_rpm = self.rpm_df.mean(axis=1)
+        tcr_sequences = self.rpm_df[avg_rpm >= self.rpm_cutoff].index
+        tcr_sequences = sorted(tcr_sequences)  # to make mmseqs deterministic
+        self.logger.info(f'''\
+Filtering out TCRs with average RPM less than {self.rpm_cutoff}
+Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequences)}''')
+
+        with FastaWriter(file=f'{self.workdir}/tcr.fasta', mode='w') as fasta:
+            for tcr in tcr_sequences:
                 fasta.write(header=tcr, sequence=tcr)
         
     def run_mmseqs(self):
         lines = [
             'mmseqs easy-cluster',
-            f'{self.workdir}/cdr3.faa',
+            f'{self.workdir}/tcr.fasta',
             f'{self.workdir}/mmseqs',  # output prefix
             f'{self.workdir}/mmseqs-tmp',  # temporary directory
             f'--min-seq-id {self.clustering_identity}',
@@ -69,21 +76,43 @@ Unique TCRs before filtering: {n_before}, after filtering: {n_after}''')
             header=None,
             names=['representative_cdr3_amino_acid_sequence', 'cdr3_amino_acid_sequence']
         )
+        self.mmseqs_df.sort_values(
+            ['representative_cdr3_amino_acid_sequence', 'cdr3_amino_acid_sequence'],
+            inplace=True,
+            ignore_index=True
+        )
 
-        unique_seqs = self.mmseqs_df['representative_cdr3_amino_acid_sequence'].unique()
-        d = {seq: f'motif_{count+1:06d}' for count, seq in enumerate(unique_seqs)}
+        # representative_sequence -> motif_id
+        unique_rep_seqs = self.mmseqs_df['representative_cdr3_amino_acid_sequence'].unique()
+        d = {seq: f'motif_{count+1:06d}' for count, seq in enumerate(unique_rep_seqs)}
         self.mmseqs_df['motif_id'] = self.mmseqs_df['representative_cdr3_amino_acid_sequence'].map(d)
-        self.mmseqs_df.drop(columns=['representative_cdr3_amino_acid_sequence'], inplace=True)
-        self.mmseqs_df.to_csv(f'{self.outdir}/mmseqs.tsv', index=False, sep='\t')
+
+        self.mmseqs_df = self.mmseqs_df.drop(
+            columns=['representative_cdr3_amino_acid_sequence']
+        ).set_index(
+            keys='cdr3_amino_acid_sequence'
+        )
+
+        self.logger.info(f'Number of motifs: {len(self.mmseqs_df["motif_id"].unique())}')
+
+    def merge_motif_id(self, df: pd.DataFrame) -> pd.DataFrame:
+        df = df.merge(
+            right=self.mmseqs_df,
+            left_index=True,
+            right_index=True,
+            how='left'
+        )
+        df['motif_id'] = df['motif_id'].fillna(value='low_abundance')
+        return df
 
     def generate_sequence_logo(self):
         dstdir = f'{self.outdir}/sequence-logo'
-        os.makedirs(dstdir, exist_ok=True)
         mafft_dir = f'{self.workdir}/mafft-tmp'
-        os.makedirs(mafft_dir, exist_ok=True)
+        for d in [dstdir, mafft_dir]:
+            os.makedirs(d, exist_ok=True)
 
         for motif_id, df in self.mmseqs_df.groupby('motif_id', sort=True):
-            sequences = df['cdr3_amino_acid_sequence'].tolist()
+            sequences = df.index.tolist()
 
             faa = f'{mafft_dir}/{motif_id}.faa'
             aln = f'{mafft_dir}/{motif_id}.aln.faa'
@@ -112,7 +141,7 @@ Unique TCRs before filtering: {n_before}, after filtering: {n_after}''')
             h = 3.5 / 2.54
 
             color_scheme = lm.src.colors.get_color_dict(color_scheme='chemistry', chars='ACDEFGHIKLMNPQRSTVWY')
-            color_scheme['-'] = np.array([0.9, 0.9, 0.9])  # light gray
+            color_scheme['-'] = np.array([0.9, 0.9, 0.9])  # set the gap character '-' to light gray
 
             lm.Logo(logo_df, color_scheme=color_scheme, figsize=(w, h))
             

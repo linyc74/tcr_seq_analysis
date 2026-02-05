@@ -18,13 +18,13 @@ class TestCompileTable(TestCase):
             clonal_index_column='cdr3_amino_acid_sequence',
             count_column='read_count',
         )
-        count_df.to_csv(f'{self.outdir}/count-table.csv', index=True)
-        rpm_df.to_csv(f'{self.outdir}/rpm-table.csv', index=True)
+        count_df.to_csv(f'{self.outdir}/count_df.csv', index=True)
+        rpm_df.to_csv(f'{self.outdir}/rpm_df.csv', index=True)
         self.assertFileEqual(
-            f'{self.outdir}/rpm-table.csv',
-            f'{self.indir}/rpm-table.csv'
+            f'{self.outdir}/rpm_df.csv',
+            f'{self.indir}/rpm_df.csv'
         )
         self.assertFileEqual(
-            f'{self.outdir}/count-table.csv',
-            f'{self.indir}/count-table.csv'
+            f'{self.outdir}/count_df.csv',
+            f'{self.indir}/count_df.csv'
         )
