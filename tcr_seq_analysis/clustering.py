@@ -7,6 +7,9 @@ from typing import List, Tuple
 from .template import Processor
 
 
+SEQUENCE_LOGO_DSTDIR = 'motif-sequence-logo'
+
+
 class Clustering(Processor):
 
     count_df: pd.DataFrame
@@ -105,7 +108,7 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
         self.count_df = self.count_df[reorder]
 
     def generate_sequence_logo(self):
-        dstdir = f'{self.outdir}/sequence-logo'
+        dstdir = f'{self.outdir}/{SEQUENCE_LOGO_DSTDIR}'
         mafft_dir = f'{self.workdir}/mafft-tmp'
         for d in [dstdir, mafft_dir]:
             os.makedirs(d, exist_ok=True)
@@ -170,8 +173,8 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
         self.call(cmd)
 
     def zip_sequence_logo(self):
-        self.call(f'tar -C "{self.outdir}" -czf "{self.outdir}/sequence-logo.tar.gz" sequence-logo')
-        self.call(f'rm -r "{self.outdir}/sequence-logo"')
+        self.call(f'tar -C "{self.outdir}" -czf "{self.outdir}/{SEQUENCE_LOGO_DSTDIR}.tar.gz" {SEQUENCE_LOGO_DSTDIR}')
+        self.call(f'rm -r "{self.outdir}/{SEQUENCE_LOGO_DSTDIR}"')
 
 
 class FastaWriter:
