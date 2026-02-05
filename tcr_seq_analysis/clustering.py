@@ -10,38 +10,35 @@ from .template import Processor
 class Clustering(Processor):
 
     count_df: pd.DataFrame
-    rpm_df: pd.DataFrame
     rpm_cutoff: float
     clustering_identity: float
 
+    rpm_df: pd.DataFrame
     mmseqs_df: pd.DataFrame
     motif_count_df: pd.DataFrame
-    motif_rpm_df: pd.DataFrame
 
     def main(
             self,
             count_df: pd.DataFrame,
-            rpm_df: pd.DataFrame,
             rpm_cutoff: float,
-            clustering_identity: float) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+            clustering_identity: float) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
         self.count_df = count_df.copy()
-        self.rpm_df = rpm_df.copy()
         self.rpm_cutoff = rpm_cutoff
         self.clustering_identity = clustering_identity
 
-        self.write_fasta()
+        self.rpm_df = normalize_to_rpm(self.count_df)
+        self.filter_by_rpm_and_write_fasta()
         self.run_mmseqs()
-        self.count_df = self.merge_motif_id(df=self.count_df)
-        self.rpm_df = self.merge_motif_id(df=self.rpm_df)
+        self.merge_motif_id_to_count_df()
         self.motif_count_df = self.count_df.groupby('motif_id').sum()
-        self.motif_rpm_df = self.rpm_df.groupby('motif_id').sum()
 
         self.generate_sequence_logo()
+        self.zip_sequence_logo()
 
-        return self.count_df, self.rpm_df, self.motif_count_df, self.motif_rpm_df
+        return self.count_df, self.motif_count_df
 
-    def write_fasta(self):
+    def filter_by_rpm_and_write_fasta(self):
         avg_rpm = self.rpm_df.mean(axis=1)
         tcr_sequences = self.rpm_df[avg_rpm >= self.rpm_cutoff].index
         tcr_sequences = sorted(tcr_sequences)  # to make mmseqs deterministic
@@ -95,15 +92,17 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
 
         self.logger.info(f'Number of motifs: {len(self.mmseqs_df["motif_id"].unique())}')
 
-    def merge_motif_id(self, df: pd.DataFrame) -> pd.DataFrame:
-        df = df.merge(
+    def merge_motif_id_to_count_df(self):
+        self.count_df = self.count_df.merge(
             right=self.mmseqs_df,
             left_index=True,
             right_index=True,
             how='left'
         )
-        df['motif_id'] = df['motif_id'].fillna(value='low_abundance')
-        return df
+        self.count_df['motif_id'] = self.count_df['motif_id'].fillna(value='low_abundance')
+        columns = self.count_df.columns.tolist()
+        reorder = [columns[-1]] + columns[:-1]  # move motif_id to the first column
+        self.count_df = self.count_df[reorder]
 
     def generate_sequence_logo(self):
         dstdir = f'{self.outdir}/sequence-logo'
@@ -169,6 +168,10 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
             f'2>> {self.outdir}/mafft.log',
         ])
         self.call(cmd)
+
+    def zip_sequence_logo(self):
+        self.call(f'tar -C "{self.outdir}" -czf "{self.outdir}/sequence-logo.tar.gz" sequence-logo')
+        self.call(f'rm -r "{self.outdir}/sequence-logo"')
 
 
 class FastaWriter:
@@ -246,3 +249,8 @@ def read_fasta(file: str) -> List[str]:
     if buffer:
         sequences.append(''.join(buffer))
     return sequences
+
+
+def normalize_to_rpm(df: pd.DataFrame) -> pd.DataFrame:
+    sum_per_column = df.sum(axis=0)
+    return df.divide(sum_per_column, axis=1) * 1000000

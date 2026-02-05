@@ -9,9 +9,7 @@ from .diversity_clonality import DiversityClonality
 class TcrSeqAnalysis(Processor):
 
     count_df: pd.DataFrame
-    rpm_df: pd.DataFrame
     motif_count_df: pd.DataFrame
-    motif_rpm_df: pd.DataFrame
 
     def main(
             self,
@@ -24,7 +22,7 @@ class TcrSeqAnalysis(Processor):
             rpm_cutoff: float,
             clustering_identity: float):
 
-        self.count_df, self.rpm_df = CompileTable(self.settings).main(
+        self.count_df = CompileTable(self.settings).main(
             csv_dir=csv_dir,
             csv_suffix=csv_suffix,
             sample_sheet=sample_sheet,
@@ -39,8 +37,7 @@ class TcrSeqAnalysis(Processor):
             sample_sheet=sample_sheet,
             group_column=group_column)
 
-        self.count_df, self.rpm_df, self.motif_count_df, self.motif_rpm_df = Clustering(self.settings).main(
+        self.count_df, self.motif_count_df = Clustering(self.settings).main(
             count_df=self.count_df,
-            rpm_df=self.rpm_df,
             rpm_cutoff=rpm_cutoff,
             clustering_identity=clustering_identity)

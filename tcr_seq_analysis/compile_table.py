@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from os.path import join
-from typing import List, Tuple
+from typing import List
 from .template import Processor
 
 
@@ -14,7 +14,6 @@ class CompileTable(Processor):
     count_column: str
 
     count_df: pd.DataFrame
-    rpm_df: pd.DataFrame  # reads per million
 
     def main(
             self,
@@ -22,7 +21,7 @@ class CompileTable(Processor):
             csv_suffix: str,
             sample_sheet: str,
             clonal_index_column: str,
-            count_column: str) -> Tuple[pd.DataFrame, pd.DataFrame]:
+            count_column: str) -> pd.DataFrame:
 
         self.csv_dir = csv_dir
         self.csv_suffix = csv_suffix
@@ -33,9 +32,8 @@ class CompileTable(Processor):
         self.read_csvs_and_merge()
         self.count_df.fillna(value=0, inplace=True)
         self.sort_cdr3_by_sum()
-        self.normalize_to_rpm()
 
-        return self.count_df, self.rpm_df
+        return self.count_df
 
     def read_csvs_and_merge(self):
         self.count_df = pd.DataFrame(columns=[self.clonal_index_column])
@@ -73,10 +71,6 @@ class CompileTable(Processor):
         ).drop(
             columns=['sum']
         )
-
-    def normalize_to_rpm(self):
-        sum_per_column = self.count_df.sum(axis=0)
-        self.rpm_df = self.count_df.divide(sum_per_column, axis=1) * 1000000
 
 
 def get_files(
