@@ -4,6 +4,7 @@ from .clustering import Clustering
 from .profile_plot import ProfilePlot
 from .compile_table import CompileTable
 from .diversity_clonality import DiversityClonality
+from .differential_abundance import DifferentialAbundance
 
 
 class TcrSeqAnalysis(Processor):
@@ -20,7 +21,8 @@ class TcrSeqAnalysis(Processor):
             count_column: str,
             group_column: str,
             rpm_cutoff: float,
-            clustering_identity: float):
+            clustering_identity: float,
+            p_value: float):
 
         self.count_df = CompileTable(self.settings).main(
             csv_dir=csv_dir,
@@ -41,3 +43,10 @@ class TcrSeqAnalysis(Processor):
             count_df=self.count_df,
             rpm_cutoff=rpm_cutoff,
             clustering_identity=clustering_identity)
+
+        DifferentialAbundance(self.settings).main(
+            df=self.motif_count_df,
+            sample_sheet=sample_sheet,
+            group_column=group_column,
+            colors=colors,
+            p_value=p_value)
