@@ -84,6 +84,7 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
 
         # representative_sequence -> motif_id
         unique_rep_seqs = self.mmseqs_df['representative_cdr3_amino_acid_sequence'].unique()
+        self.logger.info(f'Number of motifs: {len(unique_rep_seqs)}')
         d = {seq: f'motif_{count+1:06d}' for count, seq in enumerate(unique_rep_seqs)}
         self.mmseqs_df['motif_id'] = self.mmseqs_df['representative_cdr3_amino_acid_sequence'].map(d)
 
@@ -92,8 +93,6 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
         ).set_index(
             keys='cdr3_amino_acid_sequence'
         )
-
-        self.logger.info(f'Number of motifs: {len(self.mmseqs_df["motif_id"].unique())}')
 
     def merge_motif_id_to_count_df(self):
         self.count_df = self.count_df.merge(
