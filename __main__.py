@@ -2,7 +2,7 @@ import argparse
 import tcr_seq_analysis
 
 
-__VERSION__ = '1.0.0-beta'
+__VERSION__ = '1.0.0'
 
 
 PROG = 'python tcr_seq_analysis'
