@@ -1,4 +1,5 @@
 import os
+import shutil
 from .template import Settings
 from .tcr_seq_analysis import TcrSeqAnalysis
 
@@ -48,6 +49,9 @@ def main(
         p_value=p_value,
         colormap=colormap,
         invert_colors=invert_colors)
+    
+    if not settings.debug:
+        shutil.rmtree(settings.workdir)
 
 
 def get_temp_path(
