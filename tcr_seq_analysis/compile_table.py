@@ -65,11 +65,13 @@ class CompileTable(Processor):
 
     def sort_cdr3_by_sum(self):
         self.count_df['sum'] = self.count_df.sum(axis=1)
-        self.count_df = self.count_df.sort_values(
-            by='sum',
-            ascending=False
+        self.count_df['_index'] = self.count_df.index
+        self.count_df = self.count_df.sort_values(  # to make the sorting deterministic
+            by=['sum', '_index'],
+            ascending=[False, True],
+            kind='mergesort'
         ).drop(
-            columns=['sum']
+            columns=['sum', '_index']
         )
 
 

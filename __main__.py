@@ -201,5 +201,6 @@ class EntryPoint:
             debug=args.debug,
             outdir=args.outdir)
 
+
 if __name__ == '__main__':
     EntryPoint().main()
