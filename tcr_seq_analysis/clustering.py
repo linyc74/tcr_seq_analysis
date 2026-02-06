@@ -70,28 +70,30 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
         cmd = self.CMD_LINEBREAK.join(lines)
         self.call(cmd)
 
+        index_name = self.count_df.index.name
+        rep_seq = 'representative_sequence'
         self.mmseqs_df = pd.read_csv(
             f'{self.workdir}/mmseqs_cluster.tsv',
             sep='\t',
             header=None,
-            names=['representative_cdr3_amino_acid_sequence', 'cdr3_amino_acid_sequence']
+            names=[rep_seq, index_name]
         )
         self.mmseqs_df.sort_values(
-            ['representative_cdr3_amino_acid_sequence', 'cdr3_amino_acid_sequence'],
+            [rep_seq, index_name],
             inplace=True,
             ignore_index=True
         )
 
         # representative_sequence -> motif_id
-        unique_rep_seqs = self.mmseqs_df['representative_cdr3_amino_acid_sequence'].unique()
+        unique_rep_seqs = self.mmseqs_df[rep_seq].unique()
         self.logger.info(f'Number of motifs: {len(unique_rep_seqs)}')
         d = {seq: f'motif_{count+1:06d}' for count, seq in enumerate(unique_rep_seqs)}
-        self.mmseqs_df['motif_id'] = self.mmseqs_df['representative_cdr3_amino_acid_sequence'].map(d)
+        self.mmseqs_df['motif_id'] = self.mmseqs_df[rep_seq].map(d)
 
         self.mmseqs_df = self.mmseqs_df.drop(
-            columns=['representative_cdr3_amino_acid_sequence']
+            columns=[rep_seq]
         ).set_index(
-            keys='cdr3_amino_acid_sequence'
+            keys=index_name
         )
 
     def merge_motif_id_to_count_df(self):
@@ -141,6 +143,7 @@ Unique TCRs before filtering: {len(self.rpm_df)}, after filtering: {len(tcr_sequ
             w = (1.3 + seq_length * 0.7) / 2.54
             h = 3.5 / 2.54
 
+            # get and modify the default color scheme
             color_scheme = lm.src.colors.get_color_dict(color_scheme='chemistry', chars='ACDEFGHIKLMNPQRSTVWY')
             color_scheme['-'] = np.array([0.9, 0.9, 0.9])  # set the gap character '-' to light gray
 
