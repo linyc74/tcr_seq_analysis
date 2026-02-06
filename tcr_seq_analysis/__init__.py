@@ -15,7 +15,7 @@ def main(
         p_value: float,
         colormap: str,
         invert_colors: bool,
-        for_publication: bool,
+        publication_figure: bool,
         threads: int,
         debug: bool,
         outdir: str):
@@ -31,7 +31,7 @@ def main(
         threads=threads,
         debug=debug,
         mock=False,
-        for_publication=for_publication)
+        for_publication=publication_figure)
 
     for d in [settings.workdir, settings.outdir]:
         os.makedirs(d, exist_ok=True)
